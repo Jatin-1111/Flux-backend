@@ -7,6 +7,10 @@ import { ApiResponse } from '../utils/ApiResponse.js'
 
 // Generate JWT token
 const generateToken = (userId) => {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined in environment variables')
+    }
+
     return jwt.sign({ userId }, process.env.JWT_SECRET, {
         expiresIn: '7d'
     })
@@ -124,8 +128,10 @@ export const login = asyncHandler(async (req, res) => {
 
     res.status(200).json(
         new ApiResponse(200, {
-            user: userResponse,
-            token
+            data: {
+                user: userResponse,
+                token
+            }
         }, 'Login successful')
     )
 })
@@ -141,7 +147,9 @@ export const getMe = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(
-        new ApiResponse(200, { user }, 'User profile retrieved')
+        new ApiResponse(200, {
+            data: { user }
+        }, 'User profile retrieved')
     )
 })
 
@@ -201,7 +209,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(
-        new ApiResponse(200, { user }, 'Profile updated successfully')
+        new ApiResponse(200, {
+            data: { user }
+        }, 'Profile updated successfully')
     )
 })
 
