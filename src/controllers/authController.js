@@ -75,10 +75,12 @@ export const signup = asyncHandler(async (req, res) => {
         createdAt: user.createdAt
     }
 
+    console.log('✅ Signup successful:', { userId: user._id, email: user.email })
+
     res.status(201).json(
         new ApiResponse(201, {
             user: userResponse,
-            token
+            token: token
         }, 'User registered successfully')
     )
 })
@@ -88,6 +90,8 @@ export const signup = asyncHandler(async (req, res) => {
 // @access  Public
 export const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body
+
+    console.log('🔐 Login attempt for:', email)
 
     // Validation
     if (!email || !password) {
@@ -101,12 +105,14 @@ export const login = asyncHandler(async (req, res) => {
     }).select('+password')
 
     if (!user) {
+        console.log('❌ User not found:', email)
         throw new ApiError(401, 'Invalid email or password')
     }
 
     // Check password
     const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
+        console.log('❌ Invalid password for:', email)
         throw new ApiError(401, 'Invalid email or password')
     }
 
@@ -126,12 +132,13 @@ export const login = asyncHandler(async (req, res) => {
         lastLogin: new Date()
     }
 
+    console.log('✅ Login successful:', { userId: user._id, email: user.email })
+
+    // FIXED: Direct nesting - no extra data wrapper
     res.status(200).json(
         new ApiResponse(200, {
-            data: {
-                user: userResponse,
-                token
-            }
+            user: userResponse,
+            token: token
         }, 'Login successful')
     )
 })
@@ -146,9 +153,11 @@ export const getMe = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'User not found')
     }
 
+    console.log('👤 User profile requested:', { userId: user._id, email: user.email })
+
     res.status(200).json(
         new ApiResponse(200, {
-            data: { user }
+            user: user
         }, 'User profile retrieved')
     )
 })
@@ -163,6 +172,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
     if (firstName) updateData.firstName = firstName.trim()
     if (lastName) updateData.lastName = lastName.trim()
+
     if (phone !== undefined) {
         if (phone && !/^\+?[1-9]\d{1,14}$/.test(phone)) {
             throw new ApiError(400, 'Please provide a valid phone number')
@@ -183,9 +193,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
 
     if (preferences) {
-        updateData['preferences.currency'] = preferences.currency
-        updateData['preferences.timezone'] = preferences.timezone
-        updateData['preferences.theme'] = preferences.theme
+        if (preferences.currency) updateData['preferences.currency'] = preferences.currency
+        if (preferences.timezone) updateData['preferences.timezone'] = preferences.timezone
+        if (preferences.theme) updateData['preferences.theme'] = preferences.theme
     }
 
     // Update annual income if provided
@@ -208,9 +218,11 @@ export const updateProfile = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'User not found')
     }
 
+    console.log('📝 Profile updated:', { userId: user._id, updates: Object.keys(updateData) })
+
     res.status(200).json(
         new ApiResponse(200, {
-            data: { user }
+            user: user
         }, 'Profile updated successfully')
     )
 })
@@ -242,6 +254,8 @@ export const changePassword = asyncHandler(async (req, res) => {
     user.password = newPassword
     await user.save()
 
+    console.log('🔒 Password changed for user:', { userId: user._id, email: user.email })
+
     res.status(200).json(
         new ApiResponse(200, {}, 'Password changed successfully')
     )
@@ -270,6 +284,8 @@ export const deleteAccount = asyncHandler(async (req, res) => {
     user.isActive = false
     await user.save()
 
+    console.log('🗑️ Account deleted (soft):', { userId: user._id, email: user.email })
+
     res.status(200).json(
         new ApiResponse(200, {}, 'Account deleted successfully')
     )
@@ -282,7 +298,95 @@ export const logout = asyncHandler(async (req, res) => {
     // In a JWT implementation, logout is typically handled client-side
     // by removing the token. We can log this action or maintain a blacklist
 
+    console.log('👋 User logged out:', { userId: req.user._id, email: req.user.email })
+
     res.status(200).json(
         new ApiResponse(200, {}, 'Logout successful')
+    )
+})
+
+// @desc    Refresh JWT token (optional)
+// @route   POST /api/auth/refresh
+// @access  Private
+export const refreshToken = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id)
+
+    if (!user || !user.isActive) {
+        throw new ApiError(401, 'User not found or inactive')
+    }
+
+    // Generate new token
+    const token = generateToken(user._id)
+
+    console.log('🔄 Token refreshed:', { userId: user._id, email: user.email })
+
+    res.status(200).json(
+        new ApiResponse(200, {
+            token: token,
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone,
+                subscription: user.subscription,
+                preferences: user.preferences,
+                stats: user.stats
+            }
+        }, 'Token refreshed successfully')
+    )
+})
+
+// @desc    Request password reset (for future implementation)
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body
+
+    if (!email) {
+        throw new ApiError(400, 'Email is required')
+    }
+
+    const user = await User.findOne({
+        email: email.toLowerCase(),
+        isActive: true
+    })
+
+    if (!user) {
+        // Don't reveal if email exists for security
+        return res.status(200).json(
+            new ApiResponse(200, {}, 'If an account with that email exists, a password reset link has been sent')
+        )
+    }
+
+    // TODO: Implement email sending logic here
+    // Generate reset token, save to database, send email
+
+    console.log('🔐 Password reset requested:', { email })
+
+    res.status(200).json(
+        new ApiResponse(200, {}, 'If an account with that email exists, a password reset link has been sent')
+    )
+})
+
+// @desc    Reset password (for future implementation)
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = asyncHandler(async (req, res) => {
+    const { token, newPassword } = req.body
+
+    if (!token || !newPassword) {
+        throw new ApiError(400, 'Token and new password are required')
+    }
+
+    if (newPassword.length < 6) {
+        throw new ApiError(400, 'New password must be at least 6 characters')
+    }
+
+    // TODO: Implement password reset logic
+    // Verify reset token, update password
+
+    res.status(200).json(
+        new ApiResponse(200, {}, 'Password reset successful')
     )
 })
