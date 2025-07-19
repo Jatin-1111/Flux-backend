@@ -1,8 +1,13 @@
-# Flux Backend API
+## API Endpoints
+
+### Authentication
+```
+POST   /api/auth/register        # User signup
+POST# Personal Expense Tracker API
 
 ## Overview
 
-RESTful API server for Flux - the B2B financial operations platform. Built with Node.js, Express, and MongoDB to handle multi-tenant business financial data securely and efficiently.
+RESTful API server for a comprehensive personal expense tracking application. Built with Node.js, Express, and MongoDB to handle individual user financial data with smart features like recurring detection, expense splitting, and financial insights.
 
 ---
 
@@ -12,50 +17,53 @@ RESTful API server for Flux - the B2B financial operations platform. Built with 
 - **Framework:** Express.js
 - **Database:** MongoDB with Mongoose ODM
 - **Authentication:** JWT with bcrypt
-- **File Storage:** AWS S3
-- **OCR Service:** Google Cloud Vision API
-- **Payment Processing:** Stripe
-- **Deployment:** Railway/Render
+- **Currency Conversion:** External API (exchangerate-api.io)
+- **Payment Processing:** Stripe (for premium subscriptions)
+- **Deployment:** Railway/Render/Vercel
 
 ---
 
 ## Project Structure
 
 ```
-flux-backend/
+expense-tracker-backend/
 ├── src/
 │   ├── models/
-│   │   ├── Tenant.js           # Company/organization data
-│   │   ├── User.js             # User accounts & roles
-│   │   ├── Expense.js          # Expense records
-│   │   ├── Invoice.js          # Invoice data
-│   │   ├── Client.js           # Client management
-│   │   └── Category.js         # Expense categories
+│   │   ├── User.js              # User accounts & preferences
+│   │   ├── Expense.js           # Expense records
+│   │   ├── Category.js          # Expense categories
+│   │   ├── Budget.js            # Budget management
+│   │   ├── Goal.js              # Savings goals
+│   │   ├── Income.js            # Income tracking
+│   │   ├── RecurringExpense.js  # Recurring expense templates
+│   │   └── SplitExpense.js      # Shared expense tracking
 │   ├── routes/
-│   │   ├── auth.js             # Authentication endpoints
-│   │   ├── expenses.js         # Expense CRUD operations
-│   │   ├── invoices.js         # Invoice management
-│   │   ├── clients.js          # Client management
-│   │   ├── reports.js          # Financial reporting
-│   │   └── admin.js            # Admin operations
+│   │   ├── auth.js              # Authentication endpoints
+│   │   ├── expenses.js          # Expense CRUD operations
+│   │   ├── categories.js        # Category management
+│   │   ├── budgets.js           # Budget operations
+│   │   ├── goals.js             # Savings goals
+│   │   ├── income.js            # Income tracking
+│   │   ├── analytics.js         # Financial insights
+│   │   ├── recurring.js         # Recurring expenses
+│   │   └── split.js             # Expense splitting
 │   ├── middleware/
-│   │   ├── auth.js             # JWT verification
-│   │   ├── tenant.js           # Multi-tenant isolation
-│   │   ├── validation.js       # Request validation
-│   │   └── upload.js           # File upload handling
+│   │   ├── auth.js              # JWT verification
+│   │   ├── validation.js        # Request validation
+│   │   └── rateLimiting.js      # API rate limiting
 │   ├── controllers/
-│   │   ├── authController.js   # Auth business logic
+│   │   ├── authController.js    # Auth business logic
 │   │   ├── expenseController.js # Expense operations
-│   │   ├── invoiceController.js # Invoice operations
-│   │   └── reportController.js # Report generation
+│   │   ├── analyticsController.js # Insights generation
+│   │   └── recurringController.js # Recurring logic
 │   ├── utils/
-│   │   ├── ocr.js              # Google Vision OCR
-│   │   ├── s3.js               # AWS S3 operations
-│   │   ├── email.js            # Email notifications
-│   │   └── pdf.js              # PDF generation
+│   │   ├── currency.js          # Currency conversion
+│   │   ├── insights.js          # Financial insights generation
+│   │   ├── email.js             # Email notifications
+│   │   └── recurring.js         # Recurring expense logic
 │   └── config/
-│       ├── database.js         # MongoDB connection
-│       └── constants.js        # App constants
+│       ├── database.js          # MongoDB connection
+│       └── constants.js         # App constants
 ├── .env
 ├── server.js
 └── package.json
@@ -72,78 +80,58 @@ PORT=5000
 CORS_ORIGIN=http://localhost:3000
 
 # Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/flux
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/expense_tracker
 
 # Authentication
 JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=7d
 
-# AWS S3 (File Storage)
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-AWS_REGION=us-east-1
-AWS_S3_BUCKET=flux-documents
+# Currency Conversion
+CURRENCY_API_KEY=your-currency-api-key
+CURRENCY_API_URL=https://api.exchangerate-api.io/v4/latest
 
-# Google Cloud Vision (OCR)
-GOOGLE_CLOUD_PROJECT_ID=your-gcp-project
-GOOGLE_CLOUD_VISION_KEY_FILE=path/to/service-account.json
-
-# Stripe (Payments)
+# Stripe (Premium Subscriptions)
 STRIPE_SECRET_KEY=sk_test_your-stripe-secret-key
 STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
 
-# Email Service (Optional)
+# Email Service (Optional - for expense splitting notifications)
 SENDGRID_API_KEY=your-sendgrid-key
-FROM_EMAIL=noreply@flux.com
+FROM_EMAIL=noreply@expensetracker.com
 ```
 
 ---
 
 ## Database Schema
 
-### Multi-Tenant Architecture
-All data is isolated by `tenantId` to ensure complete data separation between companies.
+### Personal Finance Architecture
+All data belongs to individual users - no complex multi-tenancy needed.
 
 ### Core Models
-
-#### Tenant Model
-```javascript
-{
-  _id: ObjectId,
-  companyName: String,
-  domain: String (unique),
-  subscription: {
-    tier: ['business', 'enterprise'],
-    status: ['active', 'cancelled', 'past_due'],
-    stripeCustomerId: String,
-    stripeSubscriptionId: String
-  },
-  settings: {
-    currency: String,
-    timezone: String,
-    expenseApprovalRequired: Boolean
-  },
-  createdAt: Date,
-  updatedAt: Date
-}
-```
 
 #### User Model
 ```javascript
 {
   _id: ObjectId,
-  tenantId: ObjectId (ref: Tenant),
   email: String (unique),
   password: String (hashed),
-  role: ['admin', 'manager', 'employee'],
   profile: {
     firstName: String,
     lastName: String,
-    department: String
+    currency: String (default: 'USD'),
+    timezone: String
   },
-  isActive: Boolean,
-  lastLogin: Date,
-  createdAt: Date
+  subscription: {
+    tier: ['free', 'premium'],
+    status: ['active', 'cancelled'],
+    stripeCustomerId: String
+  },
+  settings: {
+    budgetAlerts: Boolean,
+    weeklyReports: Boolean,
+    defaultCategory: String
+  },
+  createdAt: Date,
+  lastLogin: Date
 }
 ```
 
@@ -151,40 +139,79 @@ All data is isolated by `tenantId` to ensure complete data separation between co
 ```javascript
 {
   _id: ObjectId,
-  tenantId: ObjectId (ref: Tenant),
   userId: ObjectId (ref: User),
   amount: Number,
   currency: String,
   category: String,
   description: String,
-  receiptUrl: String,
-  status: ['pending', 'approved', 'rejected', 'reimbursed'],
-  approvedBy: ObjectId (ref: User),
-  approvalDate: Date,
-  expenseDate: Date,
+  tags: [String],
+  location: String,
+  date: Date,
+  isRecurring: Boolean,
+  recurringId: ObjectId (ref: RecurringExpense),
+  splitData: {
+    isSplit: Boolean,
+    totalAmount: Number,
+    splitWith: [{ email: String, amount: Number, paid: Boolean }]
+  },
+  receipt: {
+    hasReceipt: Boolean,
+    imageUrl: String,
+    notes: String
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+#### Budget Model
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId (ref: User),
+  category: String,
+  monthlyLimit: Number,
+  currentSpent: Number,
+  alertThresholds: [Number], // [75, 90, 100]
+  rolloverUnused: Boolean,
+  month: Number,
+  year: Number,
   createdAt: Date
 }
 ```
 
-#### Invoice Model
+#### Goal Model
 ```javascript
 {
   _id: ObjectId,
-  tenantId: ObjectId (ref: Tenant),
-  clientId: ObjectId (ref: Client),
-  invoiceNumber: String,
-  lineItems: [{
-    description: String,
-    quantity: Number,
-    rate: Number,
-    amount: Number
-  }],
-  subtotal: Number,
-  tax: Number,
-  total: Number,
-  status: ['draft', 'sent', 'paid', 'overdue'],
-  dueDate: Date,
-  paidDate: Date,
+  userId: ObjectId (ref: User),
+  name: String,
+  targetAmount: Number,
+  currentAmount: Number,
+  deadline: Date,
+  category: String, // 'emergency', 'vacation', 'gadget', etc.
+  autoSave: {
+    enabled: Boolean,
+    amount: Number,
+    frequency: String // 'weekly', 'monthly'
+  },
+  isCompleted: Boolean,
+  createdAt: Date
+}
+```
+
+#### Income Model
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId (ref: User),
+  amount: Number,
+  source: String, // 'salary', 'freelance', 'investment', etc.
+  frequency: String, // 'one-time', 'weekly', 'monthly', 'yearly'
+  isRecurring: Boolean,
+  nextDate: Date,
+  description: String,
+  date: Date,
   createdAt: Date
 }
 ```
@@ -195,11 +222,11 @@ All data is isolated by `tenantId` to ensure complete data separation between co
 
 ### Authentication
 ```
-POST   /api/auth/register        # Company signup
+POST   /api/auth/register        # User signup
 POST   /api/auth/login           # User login
 POST   /api/auth/refresh         # Refresh JWT token
 POST   /api/auth/forgot-password # Password reset
-POST   /api/auth/invite-user     # Invite team member
+PUT    /api/auth/profile         # Update user profile
 ```
 
 ### Expenses
@@ -209,45 +236,71 @@ POST   /api/expenses             # Create new expense
 GET    /api/expenses/:id         # Get expense details
 PUT    /api/expenses/:id         # Update expense
 DELETE /api/expenses/:id         # Delete expense
-POST   /api/expenses/:id/approve # Approve expense
-POST   /api/expenses/upload      # Upload receipt with OCR
+GET    /api/expenses/search      # Search expenses by description
+POST   /api/expenses/bulk        # Bulk operations
 ```
 
-### Invoices
+### Categories & Budgets
 ```
-GET    /api/invoices             # List invoices
-POST   /api/invoices             # Create invoice
-GET    /api/invoices/:id         # Get invoice
-PUT    /api/invoices/:id         # Update invoice
-DELETE /api/invoices/:id         # Delete invoice
-POST   /api/invoices/:id/send    # Email invoice to client
-GET    /api/invoices/:id/pdf     # Generate PDF
-```
-
-### Clients
-```
-GET    /api/clients              # List clients
-POST   /api/clients              # Create client
-GET    /api/clients/:id          # Get client
-PUT    /api/clients/:id          # Update client
-DELETE /api/clients/:id          # Delete client
+GET    /api/categories           # List categories
+POST   /api/categories           # Create custom category
+PUT    /api/categories/:id       # Update category
+DELETE /api/categories/:id       # Delete category
+GET    /api/budgets              # Get budget status
+POST   /api/budgets              # Set/update budget
+PUT    /api/budgets/:id          # Update specific budget
 ```
 
-### Reports
+### Goals & Savings
 ```
-GET    /api/reports/dashboard    # Dashboard metrics
-GET    /api/reports/expenses     # Expense reports
-GET    /api/reports/revenue      # Revenue reports
-GET    /api/reports/cashflow     # Cash flow analysis
+GET    /api/goals                # List savings goals
+POST   /api/goals                # Create new goal
+PUT    /api/goals/:id            # Update goal
+DELETE /api/goals/:id            # Delete goal
+POST   /api/goals/:id/contribute # Add money to goal
 ```
 
-### Admin
+### Income Tracking
 ```
-GET    /api/admin/users          # Manage team members
-POST   /api/admin/users/invite   # Invite new user
-PUT    /api/admin/users/:id      # Update user role
-GET    /api/admin/settings       # Company settings
-PUT    /api/admin/settings       # Update settings
+GET    /api/income               # List income sources
+POST   /api/income               # Add income
+PUT    /api/income/:id           # Update income
+DELETE /api/income/:id           # Delete income
+```
+
+### Recurring Expenses
+```
+GET    /api/recurring            # List recurring templates
+POST   /api/recurring            # Create recurring expense
+PUT    /api/recurring/:id        # Update recurring template
+DELETE /api/recurring/:id        # Delete recurring template
+POST   /api/recurring/:id/process # Manually trigger creation
+```
+
+### Expense Splitting
+```
+POST   /api/split/create         # Create split expense
+GET    /api/split/:id            # Get split details
+PUT    /api/split/:id/pay        # Mark portion as paid
+GET    /api/split/pending        # Get pending splits
+POST   /api/split/:id/remind     # Send payment reminder
+```
+
+### Analytics & Insights
+```
+GET    /api/analytics/dashboard  # Dashboard overview
+GET    /api/analytics/trends     # Spending trends
+GET    /api/analytics/insights   # AI-generated insights
+GET    /api/analytics/monthly    # Monthly breakdown
+GET    /api/analytics/categories # Category analysis
+GET    /api/analytics/export     # Export data (CSV, PDF)
+```
+
+### Currency & Utilities
+```
+GET    /api/currency/rates       # Get exchange rates
+POST   /api/currency/convert     # Convert between currencies
+GET    /api/utils/suggestions    # Category suggestions
 ```
 
 ---
@@ -271,82 +324,153 @@ const authenticateToken = (req, res, next) => {
 }
 ```
 
-### Tenant Isolation Middleware
+### Premium Feature Middleware
 ```javascript
-// Ensure all queries are scoped to user's tenant
-const tenantScope = (req, res, next) => {
-  req.tenantId = req.user.tenantId
+// Check if user has premium subscription
+const requirePremium = (req, res, next) => {
+  if (req.user.subscription?.tier !== 'premium') {
+    return res.status(403).json({ 
+      error: 'Premium subscription required',
+      upgrade: true 
+    })
+  }
   next()
 }
 ```
 
-### Role-Based Access Control
+### Rate Limiting Middleware
 ```javascript
-const requireRole = (roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ error: 'Insufficient permissions' })
-  }
-  next()
-}
+// Prevent API abuse
+const rateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later'
+})
 ```
 
 ---
 
 ## Key Features Implementation
 
-### Receipt OCR Processing
+### Recurring Expense Detection
 ```javascript
-// utils/ocr.js
-import vision from '@google-cloud/vision'
+// utils/recurring.js
+export const detectRecurringPattern = async (userId, newExpense) => {
+  const similarExpenses = await Expense.find({
+    userId,
+    description: { $regex: new RegExp(newExpense.description, 'i') },
+    amount: { $gte: newExpense.amount - 5, $lte: newExpense.amount + 5 }
+  }).sort({ date: -1 }).limit(10)
 
-const client = new vision.ImageAnnotatorClient()
-
-export const extractReceiptData = async (imageBuffer) => {
-  const [result] = await client.textDetection({
-    image: { content: imageBuffer }
-  })
-  
-  const text = result.fullTextAnnotation?.text || ''
-  
-  return {
-    amount: extractAmount(text),
-    date: extractDate(text),
-    vendor: extractVendor(text),
-    rawText: text
+  if (similarExpenses.length >= 3) {
+    const intervals = calculateIntervals(similarExpenses)
+    const avgInterval = intervals.reduce((a, b) => a + b) / intervals.length
+    
+    if (avgInterval >= 25 && avgInterval <= 35) { // ~monthly
+      return {
+        isRecurring: true,
+        frequency: 'monthly',
+        confidence: calculateConfidence(intervals)
+      }
+    }
   }
+  
+  return { isRecurring: false }
 }
 ```
 
-### Multi-Tenant Data Queries
+### Currency Conversion
 ```javascript
-// All database queries automatically scoped to tenant
-const getExpenses = async (req, res) => {
-  const expenses = await Expense.find({ 
-    tenantId: req.tenantId,
-    userId: req.query.userId || undefined
+// utils/currency.js
+import axios from 'axios'
+
+let exchangeRates = {}
+let lastUpdated = null
+
+export const getExchangeRates = async (baseCurrency = 'USD') => {
+  const now = new Date()
+  if (!lastUpdated || (now - lastUpdated) > 3600000) { // 1 hour cache
+    const response = await axios.get(
+      `${process.env.CURRENCY_API_URL}/${baseCurrency}?access_key=${process.env.CURRENCY_API_KEY}`
+    )
+    exchangeRates = response.data.rates
+    lastUpdated = now
+  }
+  return exchangeRates
+}
+
+export const convertCurrency = async (amount, fromCurrency, toCurrency) => {
+  if (fromCurrency === toCurrency) return amount
+  
+  const rates = await getExchangeRates(fromCurrency)
+  return amount * rates[toCurrency]
+}
+```
+
+### Smart Insights Generation
+```javascript
+// utils/insights.js
+export const generateSpendingInsights = async (userId) => {
+  const thisMonth = await getMonthlyExpenses(userId, new Date())
+  const lastMonth = await getMonthlyExpenses(userId, getPreviousMonth())
+  
+  const insights = []
+  
+  // Spending trend analysis
+  const totalChange = ((thisMonth.total - lastMonth.total) / lastMonth.total) * 100
+  if (totalChange > 20) {
+    insights.push({
+      type: 'warning',
+      message: `Spending increased ${totalChange.toFixed(1)}% compared to last month`,
+      impact: 'high'
+    })
+  }
+  
+  // Category analysis
+  const categoryChanges = analyzeCategoryChanges(thisMonth, lastMonth)
+  categoryChanges.forEach(change => {
+    if (change.percentChange > 50) {
+      insights.push({
+        type: 'info',
+        message: `${change.category} spending ${change.percentChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(change.percentChange).toFixed(1)}%`,
+        impact: 'medium'
+      })
+    }
   })
-  res.json(expenses)
+  
+  return insights
 }
 ```
 
-### File Upload to S3
+### Expense Splitting Logic
 ```javascript
-// utils/s3.js
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
-
-const s3Client = new S3Client({ region: process.env.AWS_REGION })
-
-export const uploadFile = async (file, folder) => {
-  const key = `${folder}/${Date.now()}-${file.originalname}`
+// controllers/splitController.js
+export const createSplitExpense = async (req, res) => {
+  const { totalAmount, description, splitWith, splitType } = req.body
   
-  await s3Client.send(new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: key,
-    Body: file.buffer,
-    ContentType: file.mimetype
-  }))
+  let splits = []
   
-  return `https://${process.env.AWS_S3_BUCKET}.s3.amazonaws.com/${key}`
+  if (splitType === 'equal') {
+    const amountPerPerson = totalAmount / (splitWith.length + 1) // +1 for current user
+    splits = splitWith.map(email => ({ email, amount: amountPerPerson, paid: false }))
+  } else if (splitType === 'custom') {
+    splits = req.body.customSplits
+  }
+  
+  const splitExpense = new SplitExpense({
+    createdBy: req.user.id,
+    totalAmount,
+    description,
+    splits,
+    status: 'pending'
+  })
+  
+  await splitExpense.save()
+  
+  // Send notifications to split participants
+  await sendSplitNotifications(splitExpense)
+  
+  res.json(splitExpense)
 }
 ```
 
@@ -393,22 +517,22 @@ curl -X GET http://localhost:5000/api/health
 
 ### Data Protection
 - All passwords hashed with bcrypt
-- JWT tokens with short expiration
-- Tenant data completely isolated
-- Input validation on all endpoints
+- JWT tokens with configurable expiration
+- Input validation on all endpoints  
 - Rate limiting on auth endpoints
-
-### File Security
-- Secure S3 bucket configuration
-- File type validation
-- Size limits on uploads
-- Signed URLs for private files
+- MongoDB injection prevention (using Mongoose)
 
 ### API Security
 - CORS configured for frontend domain only
 - Helmet.js for security headers
 - Request size limits
-- SQL injection prevention (using Mongoose)
+- Premium feature access control
+
+### User Data Privacy
+- User data completely isolated by userId
+- Secure password reset flows
+- Optional data export for users
+- Account deletion with data cleanup
 
 ---
 
@@ -430,10 +554,11 @@ npm start
 ### Deployment Checklist
 - [ ] Environment variables configured
 - [ ] Database connection tested
-- [ ] S3 bucket permissions set
-- [ ] Google Cloud credentials uploaded
-- [ ] Stripe webhooks configured
+- [ ] Currency API credentials set up
+- [ ] Stripe webhooks configured (for premium subscriptions)
 - [ ] CORS origins updated for production domain
+- [ ] Email service configured (for expense splitting)
+- [ ] Rate limiting configured appropriately
 
 ---
 
@@ -441,17 +566,17 @@ npm start
 
 ### Logging
 - Request/response logging
-- Error tracking
+- Error tracking and monitoring
+- User activity logs (expense creation, goal updates)
 - Performance monitoring
-- User activity logs
 
 ### Backup Strategy
 - Automated database backups
-- S3 file redundancy
+- User data export capabilities
 - Configuration backup
 
 ### Performance Optimization
-- Database indexing
-- Query optimization
-- Caching strategies
-- Image compression
+- Database indexing on frequently queried fields
+- Query optimization for expense filtering
+- Caching for currency exchange rates
+- Response compression
