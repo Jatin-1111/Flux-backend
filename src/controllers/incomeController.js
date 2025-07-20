@@ -1,6 +1,7 @@
 // src/controllers/incomeController.js
 import Income from '../models/Income.js'
 import User from '../models/User.js'
+import mongoose from 'mongoose' // Add this import
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { ApiError } from '../utils/ApiError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
@@ -246,40 +247,31 @@ export const getIncomeVsExpenseAnalysis = asyncHandler(async (req, res) => {
     const startDate = new Date()
     startDate.setMonth(startDate.getMonth() - parseInt(months))
 
-    const expenseData = await Income.aggregate([
+    // FIXED: Using Expense model aggregation instead of Income lookup
+    const { default: Expense } = await import('../models/Expense.js')
+
+    const expenseData = await Expense.aggregate([
         {
-            $lookup: {
-                from: 'expenses',
-                let: { userId: mongoose.Types.ObjectId(userId) },
-                pipeline: [
-                    {
-                        $match: {
-                            $expr: { $eq: ['$user', '$userId'] },
-                            status: 'completed',
-                            date: { $gte: startDate, $lte: endDate }
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: {
-                                year: { $year: '$date' },
-                                month: { $month: '$date' }
-                            },
-                            monthlyExpenses: { $sum: '$amount' }
-                        }
-                    }
-                ],
-                as: 'expenses'
+            $match: {
+                user: new mongoose.Types.ObjectId(userId), // FIXED: Added 'new' keyword
+                status: 'completed',
+                date: { $gte: startDate, $lte: endDate }
             }
         },
         {
-            $unwind: { path: '$expenses', preserveNullAndEmptyArrays: true }
+            $group: {
+                _id: {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' }
+                },
+                monthlyExpenses: { $sum: '$amount' }
+            }
         },
         {
             $group: {
                 _id: null,
-                avgMonthlyExpenses: { $avg: '$expenses.monthlyExpenses' },
-                totalExpenses: { $sum: '$expenses.monthlyExpenses' }
+                avgMonthlyExpenses: { $avg: '$monthlyExpenses' },
+                totalExpenses: { $sum: '$monthlyExpenses' }
             }
         }
     ])

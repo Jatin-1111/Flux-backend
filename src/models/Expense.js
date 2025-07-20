@@ -199,7 +199,7 @@ expenseSchema.methods.inferCategory = function () {
     return 'other'
 }
 
-// Static method for expense analytics
+// Static method for expense analytics - FIXED ObjectId usage
 expenseSchema.statics.getMonthlyStats = function (userId, year, month) {
     const startDate = new Date(year, month - 1, 1)
     const endDate = new Date(year, month, 0, 23, 59, 59)
@@ -207,7 +207,7 @@ expenseSchema.statics.getMonthlyStats = function (userId, year, month) {
     return this.aggregate([
         {
             $match: {
-                user: mongoose.Types.ObjectId(userId),
+                user: new mongoose.Types.ObjectId(userId), // FIXED: Added 'new' keyword
                 date: { $gte: startDate, $lte: endDate },
                 status: 'completed'
             }
@@ -226,7 +226,7 @@ expenseSchema.statics.getMonthlyStats = function (userId, year, month) {
     ])
 }
 
-// Static method for spending trends
+// Static method for spending trends - FIXED ObjectId usage
 expenseSchema.statics.getSpendingTrend = function (userId, months = 6) {
     const endDate = new Date()
     const startDate = new Date()
@@ -235,7 +235,7 @@ expenseSchema.statics.getSpendingTrend = function (userId, months = 6) {
     return this.aggregate([
         {
             $match: {
-                user: mongoose.Types.ObjectId(userId),
+                user: new mongoose.Types.ObjectId(userId), // FIXED: Added 'new' keyword
                 date: { $gte: startDate, $lte: endDate },
                 status: 'completed'
             }

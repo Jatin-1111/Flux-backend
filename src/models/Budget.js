@@ -218,12 +218,12 @@ budgetSchema.statics.findExpiredAutoRenew = function () {
     })
 }
 
-// Static method to get budget summary for user
+// Static method to get budget summary for user - FIXED ObjectId usage
 budgetSchema.statics.getBudgetSummary = function (userId) {
     return this.aggregate([
         {
             $match: {
-                user: mongoose.Types.ObjectId(userId),
+                user: new mongoose.Types.ObjectId(userId), // FIXED: Added 'new' keyword
                 isActive: true,
                 startDate: { $lte: new Date() },
                 endDate: { $gte: new Date() }

@@ -165,12 +165,12 @@ incomeSchema.methods.markAsReceived = function (amount = null, date = null) {
     return this.save()
 }
 
-// Static method to get user's total annual income
+// Static method to get user's total annual income - FIXED ObjectId usage
 incomeSchema.statics.getTotalAnnualIncome = function (userId) {
     return this.aggregate([
         {
             $match: {
-                user: mongoose.Types.ObjectId(userId),
+                user: new mongoose.Types.ObjectId(userId), // FIXED: Added 'new' keyword
                 isActive: true,
                 $or: [
                     { endDate: null },
@@ -213,7 +213,7 @@ incomeSchema.statics.getTotalAnnualIncome = function (userId) {
     ])
 }
 
-// Static method to get income by type
+// Static method to get income by type - FIXED ObjectId usage
 incomeSchema.statics.getIncomeByType = function (userId, year = new Date().getFullYear()) {
     const startDate = new Date(year, 0, 1)
     const endDate = new Date(year, 11, 31, 23, 59, 59)
@@ -221,7 +221,7 @@ incomeSchema.statics.getIncomeByType = function (userId, year = new Date().getFu
     return this.aggregate([
         {
             $match: {
-                user: mongoose.Types.ObjectId(userId),
+                user: new mongoose.Types.ObjectId(userId), // FIXED: Added 'new' keyword
                 isActive: true,
                 startDate: { $lte: endDate },
                 $or: [
