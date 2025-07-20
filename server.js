@@ -4,12 +4,16 @@ import mongoose from 'mongoose'
 import cors from 'cors'
 import helmet from 'helmet'
 import { config } from 'dotenv'
+import cron from 'node-cron';
 
 // Import routes
 import authRoutes from './src/routes/auth.js'
 import expenseRoutes from './src/routes/expenses.js'
 import budgetRoutes from './src/routes/budgets.js'
 import incomeRoutes from './src/routes/income.js'
+import goalRoutes from './src/routes/goals.js'
+import tipRoutes from './src/routes/tips.js';
+import { generateAndStoreNewTip } from './src/controllers/tipController.js'
 
 // Import middleware
 import { errorHandler, notFound } from './src/middleware/errorHandler.js'
@@ -57,6 +61,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/expenses', expenseRoutes)
 app.use('/api/budgets', budgetRoutes)
 app.use('/api/income', incomeRoutes)
+app.use('/api/goals', goalRoutes)
+app.use('/api/tips', tipRoutes)
 
 // API info endpoint
 app.get('/api', (req, res) => {
@@ -106,6 +112,11 @@ const connectDB = async () => {
         setTimeout(connectDB, 5000)
     }
 }
+
+cron.schedule('5 0 * * *', generateAndStoreNewTip, {
+    scheduled: true,
+    timezone: "Asia/Kolkata"
+});
 
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
